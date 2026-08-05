@@ -132,3 +132,4 @@ logs/
 *.dbc
 *.csv
 *.tsv
+.Rproj.user

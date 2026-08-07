@@ -13,7 +13,7 @@ library(devtools)
 library(sf)
 library(readxl)
 library(here)
-# devtools::install_github("danicat/read.dbc")
+#devtools::install_github("danicat/read.dbc")
 
 # ========== 1. CONFIGURAÇÕES INICIAIS ==========
 dir     <- here("app", "input")
@@ -146,13 +146,11 @@ if (length(files) > 0) {
 #parte do tsv
 startFile <- 1
 myfiles <- list.files(file.path(dir, "tsv"), pattern = "^DENG")
-
 anos <- as.numeric(str_extract(myfiles, "\\d+"))
 myfiles <- myfiles[anos >= 13]
-
-print("pega bahia!!")
+print("teste: pega bahia!")
 calendario <- fread(file.path(dir, "sinan_calendario.txt"))
-print("pega meu bahia")
+print("teste: pega meu bahiaa!!!")
 confirmados <- TRUE 
 
 for(i in startFile:length(myfiles)){
@@ -206,25 +204,28 @@ for(i in startFile:length(myfiles)){
     newBahia <- rbind(newBahia, temp_agre_final)
   }
 }
+
 #depois de baixado, coverte e consolida os arquivos
 newBahia$State=as.numeric(newBahia$State)
 
-pop2024 <- populacao_municipios(2024)
+pop2024 <- ribge::populacao_municipios(2024)
 meso_regiao <- read_xls(file.path(dir, "regioes_geograficas_composicao_por_municipios_2017_20180911.xls"))
 
 meso_regiao_pop <- left_join(pop2024, meso_regiao, by = c("cod_municipio"="CD_GEOCODI"))
 
 baseFinal <- left_join(newBahia, meso_regiao_pop, by=c("State"="codigo_uf", "City"="cod_munic6"))
 
-
+teste <- fread("app/input/2000-2025_DENGUE_NOTIFICADOS_new_ze.tsv")
 if (confirmados == TRUE){
   write.table(baseFinal, file.path(dir, "/2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv"), sep = "\t", row.names = FALSE)
 }else{
   write.table(baseFinal, file.path(dir, "/2014-2025_DENGUE_NOTIFICADOS_dash_new.tsv"), sep = "\t", row.names = FALSE)
 }
+' 
 #############################################################
 #consolidando arquvivo final q eu preciso
-
+rm(newBahia, baseFinal, meso_regiao, meso_regiao_pop, pop2024)
+gc()
 
 temp_1 <- temp %>%
   group_by(CLASSI_FIN, CRITERIO, EVOLUCAO) %>%
@@ -311,13 +312,10 @@ for (file in t){
   temp_agre_final <- temp_agre %>% ungroup() %>%  select(Noti_Date, Noti_Week, Noti_Year, State, City, New_Cases, Age, Sex, Race_Colour)
   temp_agre_final$City <- as.numeric(temp_agre_final$City)
   temp_agre_final$City <- as.numeric(temp_agre_final$City)
-  if (i == 1){
-    newData <- temp_agre_final
-  }else{
-    newData <- rbind(newData, temp_agre_final)
-  }
+  lista_newData[[i]] <- temp_agre_final
   i <- i + 1
 }
+newData <- dplyr::bind_rows(lista_newData)
 
 if (confirmados == TRUE){
   write.table(newData, file.path(dir, "/2000-2025_DENGUE_CONFIRMADOS_new_ze.tsv"), sep = "\t", row.names = FALSE)
@@ -359,9 +357,15 @@ write.table(temp_agre_final_1, file.path(dir, "/2020_DENGUE_CONFIRMADOS_new.tsv"
 names(temp)
 ###### para Walter
 #setwd(mypath)
-t <- c("DENGBR14", "DENGBR15", "DENGBR16", "DENGBR17", "DENGBR18", "DENGBR19", "DENGBR20",
-       "DENGBR21", "DENGBR22", "DENGBR23", "DENGBR24", "DENGBR25"
-)
+arquivos_dbf <- list.files(mypath, pattern = "\\.dbf$")
+t <- str_replace_all(arquivos_dbf, "\\.dbf$", "")
+
+anos <- as.numeric(gsub("[^0-9]", "", t))
+t <- t[anos >= 13]
+
+t <- sort(t)  # garante ordem crescente
+print(t)
+
 lists <- list()
 i <- 1
 confirmados <- TRUE
@@ -614,9 +618,472 @@ if (confirmados == TRUE){
   write.table(baseFinal, file.path(dir, "/2014-2025_DENV_NOTIFICADOS_new.tsv"), sep = "\t", row.names = FALSE)
 }
 
+library(downloader)
+library(RCurl)
+library(data.table)
+library(read.dbc)
+library(openxlsx)
+library(lubridate)
+library(dplyr)
+library(tidyverse)
+library(foreign)
+library(ribge)
+library(stringr)
+library(devtools)
+library(sf)
+library(readxl)
+library(here)
+# devtools::install_github("danicat/read.dbc")
+
+# ========== 1. CONFIGURACOES INICIAIS ==========
+# IMPORTANTE: abra este script dentro do Projeto RStudio do GAARA-II
+# (File > Open Project > ~/GAARA-II) para que here() resolva os paths certos.
+
+dir     <- there("app", "input")
+B_fin   <- here("app", "input", "finais")
+B_par   <- here("app", "input", "parciais")
+dir_tsv <- here("app", "input", "tsv")
+
+dir.create(B_fin,   recursive = TRUE, showWarnings = FALSE)
+dir.create(B_par,   recursive = TRUE, showWarnings = FALSE)
+dir.create(dir_tsv, recursive = TRUE, showWarnings = FALSE)
+
+SUF <- c("DENG")
+tam <- 63
+mypath <- B_fin
+
+cat("here():", here::here(), "\n")
+cat("mypath:", mypath, "\n")
+
+if (mypath == B_fin) {
+  DOWN <- c("ftp://ftp.datasus.gov.br/dissemin/publicos/SINAN/DADOS/FINAIS/")
+  options(timeout = 300)
+} else {
+  DOWN <- c("ftp://ftp.datasus.gov.br/dissemin/publicos/SINAN/DADOS/PRELIM/")
+  options(timeout = 300)
+}
+
+if (interactive() && url.exists(DOWN)) {
+  url <- c(DOWN)
+  filenames <- getURL(url, ftp.use.epsv = FALSE, dirlistonly = TRUE)
+  filenames <- paste(url, strsplit(filenames, "\r*\n")[[1]], sep = "")
+}
+
+filenames <- filenames[grep(SUF, filenames)]
+
+# ========== 2. VERIFICA O QUE JA EXISTE EM mypath (sem setwd) ==========
+fil <- list.files(path = mypath, pattern = "^DENG")
+fil <- fil[substring(fil, 1, 4) == SUF]
+
+if (length(fil) > 0) {
+  arq <- NULL
+  for (i in 1:length(fil)) {
+    arq_ <- grep(fil[i], filenames)
+    arq  <- rbind(arq, arq_)
+    arq_ <- filenames[-arq]
+  }
+  
+  cat("#------------------------------------------------------------------------\n")
+  print(paste("Aviso: Existem", length(filenames), "arquivos no sitio pesquisado"))
+  print(paste("Aviso: Existem", length(arq_), "arquivos para atualizar"))
+  cat("#------------------------------------------------------------------------\n")
+  
+  if (length(arq_) > 0) {
+    k <- 1
+    for (i in k:length(arq_)) {
+      download.file(
+        url      = arq_[i],
+        destfile = file.path(mypath, basename(arq_[i])),
+        mode     = "wb"
+      )
+    }
+  }
+} else {
+  
+  cat("#------------------------------------------------------------------------\n")
+  print(paste("Aviso: Existem", length(filenames), "arquivos no sitio pesquisado"))
+  print(paste("Aviso: Existem", length(filenames), "arquivos para atualizar"))
+  cat("#------------------------------------------------------------------------\n")
+  
+  k <- 1
+  for (i in k:length(filenames)) {
+    download.file(
+      url      = filenames[i],
+      destfile = file.path(mypath, basename(filenames[i])),
+      mode     = "wb"
+    )
+  }
+}
+
+# ========== 3. CONVERSAO .dbc -> .dbf -> .tsv (sem setwd) ==========
+fil <- list.files(path = mypath, full.names = FALSE)
+fil <- fil[substring(fil, 1, 4) == SUF]
+
+files_dbc <- list.files(path = mypath, pattern = "\\.dbc$")
+files_dbf <- list.files(path = mypath, pattern = "\\.dbf$")
+files <- setdiff(
+  str_replace_all(files_dbc, "\\.dbc$", ""),
+  str_replace_all(files_dbf, "\\.dbf$", "")
+)
+
+cat("Arquivos pendentes de conversao:", length(files), "\n")
+print(files)
+
+onlydbf <- FALSE
+
+if (length(files) > 0) {
+  for (i in 1:length(files)) {
+    file_base <- files[i]
+    dbc_path  <- file.path(mypath, paste0(file_base, ".dbc"))
+    dbf_path  <- file.path(mypath, paste0(file_base, ".dbf"))
+    tsv_path  <- file.path(dir_tsv, paste0(file_base, ".tsv"))
+    
+    if (onlydbf == FALSE) {
+      tryCatch({
+        dbc2dbf(dbc_path, dbf_path)
+        base <- read.dbf(dbf_path)
+        write.table(base, tsv_path, sep = "\t", row.names = FALSE)
+        cat(file_base, "ok - \n")
+      }, error = function(e) {
+        cat("ERRO em", file_base, ":", conditionMessage(e), "\n")
+      })
+    } else {
+      tryCatch({
+        base <- sf::st_read(dbf_path)
+        write.table(base, tsv_path, sep = "\t", row.names = FALSE)
+        cat(file_base, "ok - \n")
+      }, error = function(e) {
+        cat("ERRO em", file_base, ":", conditionMessage(e), "\n")
+      })
+    }
+  }
+} else {
+  cat("Nenhum arquivo pendente - todos os .dbc ja tem .dbf correspondente.\n")
+}
+
+if (exists("base")) rm(base)
+gc()
+
+# ========== 4. SECAO BAHIA (agregacao dos .tsv >= 2013) ==========
+startFile <- 1
+myfiles <- list.files(file.path(dir, "tsv"), pattern = "^DENG")
+anos <- as.numeric(str_extract(myfiles, "\\d+"))
+myfiles <- myfiles[anos >= 13]
+
+cat("Arquivos a processar na secao Bahia:", length(myfiles), "\n")
+
+calendario <- fread(file.path(dir, "sinan_calendario.txt"))
+confirmados <- TRUE
+
+# Acumula em lista em vez de rbind dentro do loop (muito mais leve em memoria)
+lista_bahia <- vector("list", length(myfiles))
+
+for (i in seq_along(myfiles)) {
+  tempFile <- fread(file.path(dir, "tsv", myfiles[i]), stringsAsFactors = FALSE, showProgress = FALSE)
+  myYearCalen <- paste0(20, str_replace_all(myfiles[i], "[^0-9]", ""))
+  cale_year <- subset(calendario, ANO == myYearCalen)
+  tempFile$weekStart <- NA
+  for (icale in 1:nrow(cale_year)) {
+    idx <- which(tempFile$DT_NOTIFIC >= cale_year$Início[icale] & tempFile$DT_NOTIFIC <= cale_year$Término[icale])
+    tempFile$SEM_NOT[idx]   <- cale_year$SEM_NOT[icale]
+    tempFile$weekStart[idx] <- as.character(cale_year$Início[icale])
+  }
+  cat("i:", i, "- File: ", myfiles[i], "\n")
+  
+  if (confirmados == TRUE) {
+    temp <- subset(tempFile, CRITERIO < 3 & (CLASSI_FIN >= 10 & CLASSI_FIN <= 12))
+  } else {
+    temp <- tempFile
+  }
+  "abbrev_state" "state" "name_state"
+  if ("total" %in% colnames(temp)) {
+    temp_agre <- temp %>%
+      group_by(DT_NOTIFIC, SEM_NOT, weekStart, SG_UF_NOT, ID_MUNICIP, NU_IDADE_N, CS_SEXO, CS_RACA) %>%
+      dplyr::summarise(new_cases = sum(total), .groups = "drop") %>%
+      drop_na()
+  } else {
+    temp_agre <- temp %>%
+      group_by(DT_NOTIFIC, SEM_NOT, weekStart, SG_UF_NOT, ID_MUNICIP, NU_IDADE_N, CS_SEXO, CS_RACA) %>%
+      dplyr::summarise(new_cases = n(), .groups = "drop") %>%
+      drop_na()
+  }
+  
+  names(temp_agre) <- c("Noti_Date", "Noti_Week", "weekStart", "State", "City", "Age_temp", "Sex", "Race_Colour", "New_Cases")
+  temp_agre$Noti_Date <- as.Date(temp_agre$Noti_Date)
+  temp_agre$Race_Colour <- factor(temp_agre$Race_Colour, levels = c(1, 2, 3, 4, 5, 9), labels = c("Branca", "Preta", "Amarela", "Parda", "Indigena", "Ignorado"))
+  temp_agre$Age <- ifelse(nchar(temp_agre$Age_temp) == 2,
+                          as.numeric(temp_agre$Age_temp),
+                          ifelse(substr(temp_agre$Age_temp, 1, 2) == "40",
+                                 as.numeric(substr(temp_agre$Age_temp, 3, 4)), 0))
+  temp_agre_final <- temp_agre %>%
+    ungroup() %>%
+    dplyr::select(Noti_Date, Noti_Week, weekStart, State, City, New_Cases, Age, Sex, Race_Colour)
+  temp_agre_final$City <- as.numeric(temp_agre_final$City)
+  
+  lista_bahia[[i]] <- temp_agre_final
+}
+
+newBahia <- dplyr::bind_rows(lista_bahia)
+rm(lista_bahia, tempFile, temp, temp_agre, temp_agre_final)
+gc()
+
+newBahia$State <- as.numeric(newBahia$State)
+
+pop2024 <- populacao_municipios(2024)
+meso_regiao <- read_xls(file.path(dir, "regioes_geograficas_composicao_por_municipios_2017_20180911.xls"))
+meso_regiao_pop <- left_join(pop2024, meso_regiao, by = c("cod_municipio" = "CD_GEOCODI"))
+baseFinal <- left_join(newBahia, meso_regiao_pop, by = c("State" = "codigo_uf", "City" = "cod_munic6"))
+
+if (confirmados == TRUE) {
+  write.table(baseFinal, file.path(dir, "2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv"), sep = "\t", row.names = FALSE)
+} else {
+  write.table(baseFinal, file.path(dir, "2014-2025_DENGUE_NOTIFICADOS_dash_new.tsv"), sep = "\t", row.names = FALSE)
+}
+
+rm(newBahia, baseFinal, meso_regiao, meso_regiao_pop, pop2024)
+gc()
+ 
+# ========== FUNCOES AUXILIARES (evitam repetir codigo entre as secoes ZE e Walter) ==========
+
+# Renomeia colunas de bases antigas (CON_CLASSI/CON_CRITER/NU_IDADE) para o padrao novo.
+# Retorna uma lista com a base renomeada e a flag "idade" (indica formato da coluna de idade).
+padronizar_colunas <- function(base) {
+  pos0 <- which(names(base) %in% "CON_CLASSI")
+  pos1 <- which(names(base) %in% "CON_CRITER")
+  pos2 <- which(names(base) %in% "NU_IDADE")
+  idade <- FALSE
+  if (!identical(pos0, integer(0))) names(base)[pos0] <- "CLASSI_FIN"
+  if (!identical(pos1, integer(0))) names(base)[pos1] <- "CRITERIO"
+  if (!identical(pos2, integer(0))) { names(base)[pos2] <- "NU_IDADE_N"; idade <- TRUE }
+  list(base = base, idade = idade)
+}
+
+# Classifica a gravidade da dengue (leve/moderada/grave) a partir de CLASSI_FIN.
+classificar_gravidade <- function(base) {
+  leve      <- c(1, 6, 10)
+  moderada  <- c(2, 7, 11)
+  grave     <- c(3, 4, 8, 12)
+  base$Dengue_class <- NA_character_
+  base$Dengue_class[base$CLASSI_FIN %in% leve]     <- "1"
+  base$Dengue_class[base$CLASSI_FIN %in% moderada] <- "2"
+  base$Dengue_class[base$CLASSI_FIN %in% grave]    <- "3"
+  base
+}
+
+# Calcula a idade a partir de Age_temp, considerando os dois formatos possiveis
+# (numerico simples de 2 digitos, ou com letra M/D/I/A + numero).
+calcular_age <- function(Age_temp, idade) {
+  if (idade == FALSE) {
+    ifelse(nchar(Age_temp) == 2,
+           as.numeric(Age_temp),
+           ifelse(substr(Age_temp, 1, 2) == "40",
+                  as.numeric(substr(Age_temp, 3, 4)), 0))
+  } else {
+    ifelse(substr(Age_temp, 1, 1) %in% c("M", "D", "I"), 0,
+           ifelse(substr(Age_temp, 1, 1) == "A",
+                  as.numeric(substr(Age_temp, 2, 4)),
+                  ifelse(nchar(Age_temp) == 2,
+                         as.numeric(Age_temp),
+                         as.numeric(substr(Age_temp, 3, 4)))))
+  }
+}
+
+# ========== 5. SECAO ZE (todos os anos, notificados) ==========
+arquivos_dbf <- list.files(mypath, pattern = "\\.dbf$")
+t <- str_replace_all(arquivos_dbf, "\\.dbf$", "")
+anos <- as.numeric(gsub("[^0-9]", "", t))
+t <- sort(t[anos >= 13])
+print(t)
+
+confirmados <- FALSE
+lista_ze <- vector("list", length(t))
+
+for (idx in seq_along(t)) {
+  file <- t[idx]
+  cat(file, "\n")
+  base <- st_read(file.path(mypath, paste0(file, ".dbf")))
+  resultado_padronizacao <- padronizar_colunas(base)
+  base  <- resultado_padronizacao$base
+  idade <- resultado_padronizacao$idade
+  base  <- classificar_gravidade(base)
+  
+  if (confirmados == TRUE) {
+    base_temp <- subset(base, CRITERIO < 3 & !is.na(Dengue_class))
+  } else {
+    base_temp <- base
+  }
+  base_temp$Noti_Year <- as.numeric(paste0("20", gsub("[^0-9]", "", file)))
+  
+  if ("total" %in% colnames(base_temp)) {
+    temp_agre <- base_temp %>%
+      group_by(DT_NOTIFIC, SEM_NOT, Noti_Year, SG_UF_NOT, ID_MUNICIP, NU_IDADE_N, CS_SEXO, CS_RACA) %>%
+      dplyr::summarise(new_cases = sum(total), .groups = "drop") %>%
+      drop_na()
+  } else {
+    temp_agre <- base_temp %>%
+      group_by(DT_NOTIFIC, SEM_NOT, Noti_Year, SG_UF_NOT, ID_MUNICIP, NU_IDADE_N, CS_SEXO, CS_RACA) %>%
+      dplyr::summarise(new_cases = n(), .groups = "drop") %>%
+      drop_na()
+  }
+  
+  names(temp_agre) <- c("Noti_Date", "Noti_Week", "Noti_Year", "State", "City", "Age_temp", "Sex", "Race_Colour", "New_Cases")
+  temp_agre$Noti_Date <- as.Date(temp_agre$Noti_Date)
+  temp_agre$Race_Colour <- factor(temp_agre$Race_Colour, levels = c(1, 2, 3, 4, 5, 9), labels = c("Branca", "Preta", "Amarela", "Parda", "Indigena", "Ignorado"))
+  
+  temp_agre$Age <- calcular_age(temp_agre$Age_temp, idade)
+  
+  temp_agre_final <- temp_agre %>%
+    ungroup() %>%
+    select(Noti_Date, Noti_Week, Noti_Year, State, City, New_Cases, Age, Sex, Race_Colour)
+  temp_agre_final$City <- as.numeric(temp_agre_final$City)
+  
+  lista_ze[[idx]] <- temp_agre_final
+}
+
+newData <- dplyr::bind_rows(lista_ze)
+rm(lista_ze, base, base_temp, temp_agre, temp_agre_final)
+gc()
+
+if (confirmados == TRUE) {
+  write.table(newData, file.path(dir, "2000-2025_DENGUE_CONFIRMADOS_new_ze.tsv"), sep = "\t", row.names = FALSE)
+} else {
+  write.table(newData, file.path(dir, "2000-2025_DENGUE_NOTIFICADOS_new_ze.tsv"), sep = "\t", row.names = FALSE)
+}
+
+rm(newData)
+gc()
+ 
+# ========== 6. SECAO 2020 (isolada) ==========
+calendario_2020 <- fread(file.path(dir, "sinan_calendario.txt"))
+file <- "DENGBR20"
+base <- st_read(file.path(mypath, paste0(file, ".dbf")))
+temp <- subset(base, CRITERIO < 3 & (CLASSI_FIN >= 10 & CLASSI_FIN <= 12))
+cale_2020 <- subset(calendario_2020, ANO == 2020)
+for (i in 1:nrow(cale_2020)) {
+  idx <- which(temp$DT_NOTIFIC >= cale_2020$Início[i] & temp$DT_NOTIFIC <= cale_2020$Término[i])
+  temp$SEM_NOT[idx] <- cale_2020$SEM_NOT[i]
+}
+
+temp_agre <- temp %>%
+  group_by(DT_NOTIFIC, SEM_NOT, SG_UF_NOT, ID_MUNICIP) %>%
+  dplyr::summarise(new_cases = n(), .groups = "drop") %>%
+  drop_na()
+
+names(temp_agre) <- c("Noti_Date", "Noti_Week", "State", "City", "New_Cases")
+temp_agre$Noti_Date <- as.Date(temp_agre$Noti_Date)
+temp_agre_final <- temp_agre %>%
+  ungroup() %>%
+  select(Noti_Date, Noti_Week, State, City, New_Cases)
+temp_agre_final$City  <- as.numeric(temp_agre_final$City)
+temp_agre_final$State <- as.numeric(temp_agre_final$State)
+
+pop2024 <- populacao_municipios(2024)
+temp_agre_final_1 <- left_join(temp_agre_final, pop2024, by = c("State" = "codigo_uf", "City" = "cod_munic6"))
+
+write.table(temp_agre_final_1, file.path(dir, "2020_DENGUE_CONFIRMADOS_new.tsv"), sep = "\t", row.names = FALSE)
+
+rm(base, temp, temp_agre, temp_agre_final, temp_agre_final_1, pop2024)
+gc()
+
+# ========== 7. SECAO WALTER (mortes, 2014-2025) ==========
+t_walter <- c("DENGBR14", "DENGBR15", "DENGBR16", "DENGBR17", "DENGBR18", "DENGBR19", "DENGBR20",
+              "DENGBR21", "DENGBR22", "DENGBR23", "DENGBR24", "DENGBR25")
+
+confirmados <- TRUE
+lista_walter <- vector("list", length(t_walter))
+
+for (idx in seq_along(t_walter)) {
+  file <- t_walter[idx]
+  cat(file, "\n")
+  base <- st_read(file.path(mypath, paste0(file, ".dbf")))
+  resultado_padronizacao <- padronizar_colunas(base)
+  base  <- resultado_padronizacao$base
+  idade <- resultado_padronizacao$idade
+  base  <- classificar_gravidade(base)
+  
+  if (confirmados == TRUE) {
+    base_temp <- subset(base, CRITERIO < 3 & !is.na(Dengue_class) & EVOLUCAO == 2)
+  } else {
+    base_temp <- subset(base, EVOLUCAO == 2 | EVOLUCAO == 4)
+  }
+  base_temp$Noti_Year <- as.numeric(paste0("20", gsub("[^0-9]", "", file)))
+  
+  if ("total" %in% colnames(base_temp)) {
+    temp_agre <- base_temp %>%
+      group_by(DT_NOTIFIC, SEM_NOT, Noti_Year, SG_UF_NOT, ID_MUNICIP, NU_IDADE_N, CS_SEXO, CS_RACA, EVOLUCAO) %>%
+      dplyr::summarise(new_cases = sum(total), .groups = "drop") %>%
+      drop_na()
+  } else {
+    temp_agre <- base_temp %>%
+      group_by(DT_NOTIFIC, SEM_NOT, Noti_Year, SG_UF_NOT, ID_MUNICIP, NU_IDADE_N, CS_SEXO, CS_RACA, EVOLUCAO) %>%
+      dplyr::summarise(new_cases = n(), .groups = "drop") %>%
+      drop_na()
+  }
+  
+  names(temp_agre) <- c("Noti_Date", "Noti_Week", "Noti_Year", "State", "City", "Age_temp", "Sex", "Race_Colour", "Deaths", "New_Cases")
+  temp_agre$Noti_Date <- as.Date(temp_agre$Noti_Date)
+  temp_agre$Race_Colour <- factor(temp_agre$Race_Colour, levels = c(1, 2, 3, 4, 5, 9), labels = c("Branca", "Preta", "Amarela", "Parda", "Indigena", "Ignorado"))
+  
+  temp_agre$Age <- calcular_age(temp_agre$Age_temp, idade)
+  
+  temp_agre_final <- temp_agre %>%
+    ungroup() %>%
+    select(Noti_Date, Noti_Week, Noti_Year, State, City, New_Cases, Age, Sex, Race_Colour, Deaths)
+  temp_agre_final$City <- as.numeric(temp_agre_final$City)
+  
+  lista_walter[[idx]] <- temp_agre_final
+}
+
+newData <- dplyr::bind_rows(lista_walter)
+rm(lista_walter, base, base_temp, temp_agre, temp_agre_final)
+gc()
+
+if (confirmados == TRUE) {
+  write.table(newData, file.path(dir, "2014-2025_DENGUE_CONFIRMADOS_new_Walter_deaths.tsv"), sep = "\t", row.names = FALSE)
+} else {
+  write.table(newData, file.path(dir, "2014-2025_DENGUE_NOTIFICADOS_new_Walter_deaths.tsv"), sep = "\t", row.names = FALSE)
+}
+ 
+# ========== 8. DEATHS (comparacao notificados x confirmados) ==========
+notificados <- fread(file.path(dir, "2014-2025_DENGUE_NOTIFICADOS_new_Walter_deaths.tsv"))
+
+noti_agre <- notificados %>%
+  group_by(Noti_Year) %>%
+  dplyr::summarise(noti_deaths = n(), .groups = "drop") %>%
+  drop_na()
+
+confi_agre <- newData %>%
+  group_by(Noti_Year) %>%
+  dplyr::summarise(confi_deaths = n(), .groups = "drop") %>%
+  drop_na()
+
+deaths <- left_join(noti_agre, confi_agre, by = "Noti_Year")
+write.table(deaths, file.path(dir, "deaths.tsv"), sep = "\t", row.names = FALSE)
+
+rm(notificados, noti_agre, confi_agre, deaths, newData)
+gc()
+
+cat("Pipeline concluido.\n")
+
+dengue_data <- fread("app/input/2000-2025_DENGUE_NOTIFICADOS_new_ze.tsv")
+dengue_conf <- fread("app/input/2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv")
+dengue_conf$State[which(is.na(dengue_conf$uf))] <- substr(dengue_conf$City[which(is.na(dengue_conf$uf))], 1, 2)
+uf_map <- c(
+  "11"="RO","12"="AC","13"="AM","14"="RR","15"="PA","16"="AP","17"="TO",
+  "21"="MA","22"="PI","23"="CE","24"="RN","25"="PB","26"="PE","27"="AL","28"="SE","29"="BA",
+  "31"="MG","32"="ES","33"="RJ","35"="SP",
+  "41"="PR","42"="SC","43"="RS",
+  "50"="MS","51"="MT","52"="GO","53"="DF"
+)
+idx <- is.na(dengue_conf$uf)
+
+dengue_conf$uf[idx] <- uf_map[
+  as.character(dengue_conf$State[idx])
+]
 
 
 
+ 
 startFile <- 1
 SUF = "CHIK"
 myfiles <- list.files(file.path(dir, "arb_tsv"), pattern = paste0(SUF, "*"))
@@ -778,6 +1245,8 @@ write.table(arbo_agre, file.path(dir, "/2014-2025_ARBO_CONFIRMADOS_new.tsv"), se
 
 
 '
+
+' 
 # Cheque se os arquivos .dbc têm tamanho razoável (> 0 bytes)
 file.info(list.files(mypath, pattern = ".dbc", full.names = TRUE))$size
 
@@ -838,7 +1307,7 @@ for (i in 1:length(filenames)) {
   download.file(url = filenames[i], destfile = destfile, mode = "wb", quiet = FALSE)
 }
 
- 
+
 
 list.files(mypath, pattern = "\\.dbc$")
 
@@ -918,3 +1387,5 @@ cat("DENGBR08 ok\n")
 
 ' 
 #
+
+' 

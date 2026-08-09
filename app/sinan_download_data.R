@@ -1081,7 +1081,7 @@ dengue_conf$uf[idx] <- uf_map[
   as.character(dengue_conf$State[idx])
 ]
 
-
+' 
 
  
 startFile <- 1
@@ -1152,7 +1152,7 @@ if (confirmados == TRUE){
   write.table(baseFinal, file.path(dir, "/2015-2025_CHIKV_NOTIFICADOS_new.tsv"), sep = "\t", row.names = FALSE)
 }
 
-
+ 
 
 startFile <- 1
 SUF = "ZIKA"
@@ -1227,10 +1227,10 @@ if (confirmados == TRUE){
 
 zikv <- fread(file.path(dir, "/2016-2025_ZIKV_CONFIRMADOS_new.tsv"))
 chikv <- fread(file.path(dir, "/2015-2025_CHIKV_CONFIRMADOS_new.tsv"))
-denv <- fread(file.path(dir, "/2014-2025_DENV_CONFIRMADOS_new.tsv"))
+deng_ <- fread(file.path(dir, "/2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv"))
 
 
-arbo <- rbind(denv, chikv, zikv)
+arbo <- rbind(deng_, chikv, zikv)
 
 # "Noti_Date"     "Noti_Week"     "State"         "City"          "New_Cases"
 # "weekStart"     "uf"            "codigo_munic"  "nome_munic"
@@ -1246,7 +1246,7 @@ write.table(arbo_agre, file.path(dir, "/2014-2025_ARBO_CONFIRMADOS_new.tsv"), se
 
 '
 
-' 
+ 
 # Cheque se os arquivos .dbc têm tamanho razoável (> 0 bytes)
 file.info(list.files(mypath, pattern = ".dbc", full.names = TRUE))$size
 

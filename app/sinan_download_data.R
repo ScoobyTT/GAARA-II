@@ -204,22 +204,24 @@ for(i in startFile:length(myfiles)){
     newBahia <- rbind(newBahia, temp_agre_final)
   }
 }
+
 #depois de baixado, coverte e consolida os arquivos
 newBahia$State=as.numeric(newBahia$State)
 
-pop2024 <- populacao_municipios(2024)
+pop2024 <- ribge::populacao_municipios(2024)
 meso_regiao <- read_xls(file.path(dir, "regioes_geograficas_composicao_por_municipios_2017_20180911.xls"))
 
 meso_regiao_pop <- left_join(pop2024, meso_regiao, by = c("cod_municipio"="CD_GEOCODI"))
 
 baseFinal <- left_join(newBahia, meso_regiao_pop, by=c("State"="codigo_uf", "City"="cod_munic6"))
 
-
+teste <- fread("app/input/2000-2025_DENGUE_NOTIFICADOS_new_ze.tsv")
 if (confirmados == TRUE){
   write.table(baseFinal, file.path(dir, "/2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv"), sep = "\t", row.names = FALSE)
 }else{
   write.table(baseFinal, file.path(dir, "/2014-2025_DENGUE_NOTIFICADOS_dash_new.tsv"), sep = "\t", row.names = FALSE)
 }
+' 
 #############################################################
 #consolidando arquvivo final q eu preciso
 rm(newBahia, baseFinal, meso_regiao, meso_regiao_pop, pop2024)
@@ -840,7 +842,7 @@ if (confirmados == TRUE) {
 
 rm(newBahia, baseFinal, meso_regiao, meso_regiao_pop, pop2024)
 gc()
-' 
+ 
 # ========== FUNCOES AUXILIARES (evitam repetir codigo entre as secoes ZE e Walter) ==========
 
 # Renomeia colunas de bases antigas (CON_CLASSI/CON_CRITER/NU_IDADE) para o padrao novo.
@@ -1041,7 +1043,7 @@ if (confirmados == TRUE) {
 } else {
   write.table(newData, file.path(dir, "2014-2025_DENGUE_NOTIFICADOS_new_Walter_deaths.tsv"), sep = "\t", row.names = FALSE)
 }
-' 
+ 
 # ========== 8. DEATHS (comparacao notificados x confirmados) ==========
 notificados <- fread(file.path(dir, "2014-2025_DENGUE_NOTIFICADOS_new_Walter_deaths.tsv"))
 
@@ -1063,17 +1065,25 @@ gc()
 
 cat("Pipeline concluido.\n")
 
+dengue_data <- fread("app/input/2000-2025_DENGUE_NOTIFICADOS_new_ze.tsv")
+dengue_conf <- fread("app/input/2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv")
+dengue_conf$State[which(is.na(dengue_conf$uf))] <- substr(dengue_conf$City[which(is.na(dengue_conf$uf))], 1, 2)
+uf_map <- c(
+  "11"="RO","12"="AC","13"="AM","14"="RR","15"="PA","16"="AP","17"="TO",
+  "21"="MA","22"="PI","23"="CE","24"="RN","25"="PB","26"="PE","27"="AL","28"="SE","29"="BA",
+  "31"="MG","32"="ES","33"="RJ","35"="SP",
+  "41"="PR","42"="SC","43"="RS",
+  "50"="MS","51"="MT","52"="GO","53"="DF"
+)
+idx <- is.na(dengue_conf$uf)
 
-
-
-
-
+dengue_conf$uf[idx] <- uf_map[
+  as.character(dengue_conf$State[idx])
+]
 
 ' 
-  
 
-
-
+ 
 startFile <- 1
 SUF = "CHIK"
 myfiles <- list.files(file.path(dir, "arb_tsv"), pattern = paste0(SUF, "*"))
@@ -1142,7 +1152,7 @@ if (confirmados == TRUE){
   write.table(baseFinal, file.path(dir, "/2015-2025_CHIKV_NOTIFICADOS_new.tsv"), sep = "\t", row.names = FALSE)
 }
 
-
+ 
 
 startFile <- 1
 SUF = "ZIKA"
@@ -1217,10 +1227,10 @@ if (confirmados == TRUE){
 
 zikv <- fread(file.path(dir, "/2016-2025_ZIKV_CONFIRMADOS_new.tsv"))
 chikv <- fread(file.path(dir, "/2015-2025_CHIKV_CONFIRMADOS_new.tsv"))
-denv <- fread(file.path(dir, "/2014-2025_DENV_CONFIRMADOS_new.tsv"))
+deng_ <- fread(file.path(dir, "/2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv"))
 
 
-arbo <- rbind(denv, chikv, zikv)
+arbo <- rbind(deng_, chikv, zikv)
 
 # "Noti_Date"     "Noti_Week"     "State"         "City"          "New_Cases"
 # "weekStart"     "uf"            "codigo_munic"  "nome_munic"
@@ -1236,7 +1246,9 @@ write.table(arbo_agre, file.path(dir, "/2014-2025_ARBO_CONFIRMADOS_new.tsv"), se
 
 '
 
-' 
+'
+
+ 
 # Cheque se os arquivos .dbc têm tamanho razoável (> 0 bytes)
 file.info(list.files(mypath, pattern = ".dbc", full.names = TRUE))$size
 

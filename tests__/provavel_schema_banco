@@ -1,0 +1,38 @@
+CREATE TABLE dim_tempo (
+    id_tempo SERIAL PRIMARY KEY,
+    ano SMALLINT NOT NULL,
+    semana_epi SMALLINT NOT NULL,
+    data_notificacao DATE,
+    UNIQUE(ano, semana_epi)
+);
+
+CREATE TABLE dim_municipio (
+    id_municipio INT PRIMARY KEY, -- usa o código IBGE direto como PK, evita surrogate key
+    nome VARCHAR(100),
+    uf CHAR(2),
+    regiao VARCHAR(20),
+    lat NUMERIC(9,6),
+    lon NUMERIC(9,6)
+);
+
+CREATE TABLE dim_agravo (
+    id_agravo SERIAL PRIMARY KEY,
+    nome_doenca VARCHAR(30),
+    classificacao_final VARCHAR(50)
+);
+
+CREATE TABLE dim_demografia (
+    id_demografia SERIAL PRIMARY KEY,
+    faixa_etaria VARCHAR(20),
+    sexo CHAR(1),
+    raca_cor VARCHAR(20)
+);
+
+CREATE TABLE fato_casos (
+    id_caso BIGSERIAL PRIMARY KEY,
+    id_tempo INT REFERENCES dim_tempo(id_tempo),
+    id_municipio INT REFERENCES dim_municipio(id_municipio),
+    id_agravo INT REFERENCES dim_agravo(id_agravo),
+    id_demografia INT REFERENCES dim_demografia(id_demografia),
+    qtd_casos INT DEFAULT 1
+) PARTITION BY RANGE (id_tempo); -- opcional, ver abaixo

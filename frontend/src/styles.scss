@@ -1,0 +1,241 @@
+/* ==========================================================================
+   GAARA-II: DESIGN SYSTEM & ESTILOS GLOBAIS
+   Paleta Harmoniosa, Tipografia Moderna, Suporte a Dark/Light Mode e Glassmorphism
+   ========================================================================== */
+
+@import 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap';
+@import 'leaflet/dist/leaflet.css';
+
+:root {
+  /* Cores Base - Tema Claro */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --bg-glass: rgba(255, 255, 255, 0.85);
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --border-color: rgba(148, 163, 184, 0.2);
+  --border-hover: rgba(148, 163, 184, 0.4);
+
+  /* Identidade Visual Epidemiológica */
+  --dengue-red: #ef4444;
+  --dengue-red-soft: #fee2e2;
+  --dengue-orange: #f97316;
+  --dengue-orange-soft: #ffedd5;
+  --dengue-amber: #f59e0b;
+  --dengue-amber-soft: #fef3c7;
+  --dengue-teal: #0d9488;
+  --dengue-teal-soft: #ccfbf1;
+  --dengue-blue: #2563eb;
+  --dengue-blue-soft: #dbeafe;
+  --dengue-purple: #7c3aed;
+  --dengue-purple-soft: #ede9fe;
+
+  --card-radius: 16px;
+  --pill-radius: 9999px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 16px -2px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 32px -4px rgba(15, 23, 42, 0.12);
+  --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme='dark'] {
+  --bg-primary: #090d16;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1f2937;
+  --bg-glass: rgba(17, 24, 39, 0.85);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.18);
+
+  --dengue-red-soft: rgba(239, 68, 68, 0.15);
+  --dengue-orange-soft: rgba(249, 115, 22, 0.15);
+  --dengue-amber-soft: rgba(245, 158, 11, 0.15);
+  --dengue-teal-soft: rgba(13, 148, 136, 0.15);
+  --dengue-blue-soft: rgba(37, 99, 235, 0.15);
+  --dengue-purple-soft: rgba(124, 58, 237, 0.15);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 36px -4px rgba(0, 0, 0, 0.7);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Scrollbar Personalizada */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Utilitários e Classes de Layout */
+.app-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+}
+
+.card-gaara {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  overflow: hidden;
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-hover);
+  }
+}
+
+.glass-header {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--pill-radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+
+  &.badge-danger {
+    background: var(--dengue-red-soft);
+    color: var(--dengue-red);
+  }
+
+  &.badge-warning {
+    background: var(--dengue-orange-soft);
+    color: var(--dengue-orange);
+  }
+
+  &.badge-success {
+    background: var(--dengue-teal-soft);
+    color: var(--dengue-teal);
+  }
+
+  &.badge-info {
+    background: var(--dengue-blue-soft);
+    color: var(--dengue-blue);
+  }
+}
+
+.btn-gaara {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: var(--transition);
+
+  &:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+  }
+
+  &.btn-primary {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+
+    &:hover {
+      box-shadow: 0 6px 18px rgba(239, 68, 68, 0.45);
+    }
+  }
+
+  &.active {
+    background: var(--dengue-blue-soft);
+    color: var(--dengue-blue);
+    border-color: var(--dengue-blue);
+  }
+}
+
+/* Grids Responsivos */
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.grid-charts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Leaflet Container Fixes */
+.leaflet-container {
+  font-family: inherit !important;
+  background-color: var(--bg-tertiary) !important;
+  border-radius: var(--card-radius);
+  z-index: 1;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--shadow-lg) !important;
+  border: 1px solid var(--border-color);
+}
+
+.leaflet-popup-tip {
+  background: var(--bg-secondary) !important;
+}

@@ -1,0 +1,26 @@
+<!-- Navbar Superior Fixa -->
+<app-navbar
+  [activeTab]="activeTab"
+  (tabChange)="onTabChange($event)"
+></app-navbar>
+
+<!-- Conteúdo Principal da Aplicação -->
+<main class="app-container">
+  <!-- Aba 1: Dashboard Geral -->
+  <div *ngIf="activeTab === 'dashboard'">
+    <app-dashboard></app-dashboard>
+  </div>
+
+  <!-- Aba 2: Sistema de Alerta Precoce -->
+  <div *ngIf="activeTab === 'alerts'">
+    <app-alerts-view></app-alerts-view>
+  </div>
+
+  <!-- Aba 3: Simulador de Cenários -->
+  <div *ngIf="activeTab === 'simulation'">
+    <app-simulation-view></app-simulation-view>
+  </div>
+
+  <!-- Rodapé Científico e Institucional -->
+  <app-footer></app-footer>
+</main>

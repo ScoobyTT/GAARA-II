@@ -41,19 +41,21 @@ CREATE INDEX idx_fato_agravo ON fato_casos(agravo);
 CREATE INDEX idx_fato_tempo ON fato_casos(id_tempo);
 CREATE INDEX idx_fato_municipio ON fato_casos(id_municipio);
 CREATE INDEX idx_fato_composto ON fato_casos(agravo, id_municipio, id_tempo);
-
+######################################################################################
 # CONFIGURAÇÃO
 ENGINE = get_engine()
+######################################################################################
+
+######################################################################################
+#leitura de dados brutos
 # Se você não tiver o CSV completo, pode criar a partir dos dados do seu TSV:
 df = pd.read_csv('2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv', sep='\t')
 # 1. LER O CALENDÁRIO SINAN
 calendario = pd.read_csv('GAARA-II/app/input/sinan_calendario.txt', sep='\t')
-
-###########################################################################################
-#
 ###########################################################################################
 
-# 2. TRANSFORMAR PARA O FORMATO DA TABELA
+###########################################################################################
+# 2. TRANSFORMAR CALENDARIO EM FORMATO DE TABELA
 dim_tempo = pd.DataFrame()
 dim_tempo['semana_epidemiologica'] = calendario['ANO'] * 100 + calendario['SEM_NOT']
 dim_tempo['ano'] = calendario['ANO']
@@ -63,11 +65,12 @@ dim_tempo['dia_inicio'] = pd.to_datetime(calendario['Início'])
 dim_tempo['dia_fim'] = pd.to_datetime(calendario['Término'])
 # Remove duplicatas (se houver)
 dim_tempo = dim_tempo.drop_duplicates(subset=['semana_epidemiologica'])
-
 # 3. INSERIR NO BANCO
 dim_tempo.to_sql('dim_tempo', ENGINE, if_exists='append', index=False)
 print(f"Inseridas {len(dim_tempo)} semanas epidemiológicas.")
+######################################################################################
 
+######################################################################################
 # Gera semanas de acordo com a quantidade de anos
 ano_min = int(df[coluna_ano].min())
 ano_max = int(df[coluna_ano].max())
@@ -86,9 +89,11 @@ for ano in range(ano_min, ano_max + 1):
 semanas_ep = pd.DataFrame(semanas)
 semanas_ep.to_sql('dim_tempo', ENGINE, if_exists='append', index=False)
 print(f"Inseridas {len(df)} semanas.")
+######################################################################################
+######################################################################################
 
 
-
+######################################################################################
 # 2. CRIAR TABELA TEMPORÁRIA NO BANCO
 aux.to_sql('temp_sinan', ENGINE, if_exists='replace', index=False)
 print(f"Tabela temporária criada com {len(df)} linhas.")

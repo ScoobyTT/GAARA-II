@@ -51,12 +51,12 @@ df = pd.read_csv('2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv', sep='\t')
 
 # Extrai municípios únicos do seu próprio dado
 #acho q ainda ainda nao tenho a variavel de municipio dentro do 'dt' original, preciso verificar. mas tenho um doc com essas informacoes dentro da pasta "input"
-#municipios = df[['City', 'State']].drop_duplicates()
+municipios = df[['nome_mun', 'abbrev_state']].drop_duplicates()
 #municipios.columns = ['codigo_ibge', 'abbrev_uf']
 
 # 2. INSERIR NO BANCO
 #muito provavelmente vou precisar mudar o nome dessas variaveis
-#municipios.to_sql('dim_geografia', ENGINE, if_exists='append', index=False)
+municipios.to_sql('cod_rgi', ENGINE, if_exists='append', index=False)
 
 print(f"Inseridos {len(municipios)} municípios.")
 

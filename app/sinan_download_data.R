@@ -152,7 +152,7 @@ print("teste: pega bahia!")
 calendario <- fread(file.path(dir, "sinan_calendario.txt"))
 print("teste: pega meu bahiaa!!!")
 confirmados <- TRUE 
-
+lista_bahia <- list()
 for(i in startFile:length(myfiles)){
   dir.create(file.path(dir, "tsv"), recursive = TRUE, showWarnings = FALSE)
   tempFile <- fread(file.path(dir, "tsv", myfiles[i]), stringsAsFactors = FALSE, showProgress = FALSE)
@@ -198,12 +198,12 @@ for(i in startFile:length(myfiles)){
   
   temp_agre_final$City <- as.numeric(temp_agre_final$City)
   temp_agre_final$City <- as.numeric(temp_agre_final$City)
-  if (i == startFile){
-    newBahia <- temp_agre_final
-  }else{
-    newBahia <- rbind(newBahia, temp_agre_final)
-  }
+  temp_agre_final$Noti_Week <- as.integer(as.character(temp_agre_final$Noti_Week))
+  lista_bahia[[i]] <- temp_agre_final;  rm(tempFile, temp, temp_agre, temp_agre_final)
+  gc()
 }
+
+newBahia <- dplyr::bind_rows(lista_bahia)
 
 #depois de baixado, coverte e consolida os arquivos
 newBahia$State=as.numeric(newBahia$State)
@@ -215,22 +215,20 @@ meso_regiao_pop <- left_join(pop2024, meso_regiao, by = c("cod_municipio"="CD_GE
 
 baseFinal <- left_join(newBahia, meso_regiao_pop, by=c("State"="codigo_uf", "City"="cod_munic6"))
 
-teste <- fread("app/input/2000-2025_DENGUE_NOTIFICADOS_new_ze.tsv")
 if (confirmados == TRUE){
   write.table(baseFinal, file.path(dir, "/2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv"), sep = "\t", row.names = FALSE)
 }else{
   write.table(baseFinal, file.path(dir, "/2014-2025_DENGUE_NOTIFICADOS_dash_new.tsv"), sep = "\t", row.names = FALSE)
 }
-' 
+ 
 #############################################################
 #consolidando arquvivo final q eu preciso
-rm(newBahia, baseFinal, meso_regiao, meso_regiao_pop, pop2024)
+rm(newBahia, baseFinal, meso_regiao, meso_regiao_pop)
 gc()
-
-temp_1 <- temp %>%
-  group_by(CLASSI_FIN, CRITERIO, EVOLUCAO) %>%
-  dplyr::summarise(count = n()) %>%
-  drop_na()
+#temp_1 <- temp %>%
+#  group_by(CLASSI_FIN, CRITERIO, EVOLUCAO) %>%
+#  dplyr::summarise(count = n()) %>%
+#  drop_na()
 
 
 
@@ -245,12 +243,14 @@ t <- t[anos >= 13]
 t <- sort(t)  # garante ordem crescente
 print(t)
 
-lists <- list()
+lista_newData <- list()
 i <- 1
 confirmados <- FALSE
 for (file in t){
   cat(file, "\n")
-  base <- st_read(file.path(mypath, paste0(file, ".dbf")))
+  base <- foreign::read.dbf(file.path(mypath, paste0(file, ".dbf")), as.is = TRUE)
+  base <- base[, c("DT_NOTIFIC", "SEM_NOT", "SG_UF_NOT", "ID_MUNICIP",
+                   "NU_IDADE_N", "CS_SEXO", "CS_RACA", "CLASSI_FIN", "CRITERIO")]
   pos0 <- which(names(base) %in% "CON_CLASSI")
   pos1 <- which(names(base) %in% "CON_CRITER")
   pos2 <- which(names(base) %in% "NU_IDADE")
@@ -314,16 +314,19 @@ for (file in t){
   temp_agre_final$City <- as.numeric(temp_agre_final$City)
   lista_newData[[i]] <- temp_agre_final
   i <- i + 1
+  rm(base, base_temp, temp_agre, temp_agre_final)
+  gc()  # devolve a RAM pro sistema
 }
 newData <- dplyr::bind_rows(lista_newData)
+newData <- left_join(newData, pop2024, by = c("City" = "cod_municipio"))
 
 if (confirmados == TRUE){
   write.table(newData, file.path(dir, "/2000-2025_DENGUE_CONFIRMADOS_new_ze.tsv"), sep = "\t", row.names = FALSE)
 }else{
   write.table(newData, file.path(dir, "/2000-2025_DENGUE_NOTIFICADOS_new_ze.tsv"), sep = "\t", row.names = FALSE)
 }
-
-calendario <- fread("../sinan_calendario.txt")
+'  
+calendario <- fread("input/sinan_calendario.txt")
 file <- "DENGBR20"
 base <- st_read(file.path(mypath, paste0(file, ".dbf")))
 temp <- subset(base, CRITERIO < 3 & (CLASSI_FIN >= 10 & CLASSI_FIN <= 12 ))
@@ -612,7 +615,7 @@ meso_regiao <- read_xls(file.path(dir, "regioes_geograficas_composicao_por_munic
 meso_regiao_pop <- left_join(pop2024, meso_regiao, by = c("cod_municipio"="CD_GEOCODI"))
 baseFinal <- left_join(newBahia, meso_regiao_pop, by=c("State"="codigo_uf", "City"="cod_munic6"))
 
-if (confirmados == TRUE){
+if (confirmados == FALSE){
   write.table(baseFinal, file.path(dir, "/2014-2025_DENV_CONFIRMADOS_new.tsv"), sep = "\t", row.names = FALSE)
 }else{
   write.table(baseFinal, file.path(dir, "/2014-2025_DENV_NOTIFICADOS_new.tsv"), sep = "\t", row.names = FALSE)
@@ -795,7 +798,7 @@ for (i in seq_along(myfiles)) {
   } else {
     temp <- tempFile
   }
-  "abbrev_state" "state" "name_state"
+ # "abbrev_state" "state" "name_state"
   if ("total" %in% colnames(temp)) {
     temp_agre <- temp %>%
       group_by(DT_NOTIFIC, SEM_NOT, weekStart, SG_UF_NOT, ID_MUNICIP, NU_IDADE_N, CS_SEXO, CS_RACA) %>%
@@ -1081,7 +1084,7 @@ dengue_conf$uf[idx] <- uf_map[
   as.character(dengue_conf$State[idx])
 ]
 
-' 
+
 
  
 startFile <- 1
@@ -1152,7 +1155,7 @@ if (confirmados == TRUE){
   write.table(baseFinal, file.path(dir, "/2015-2025_CHIKV_NOTIFICADOS_new.tsv"), sep = "\t", row.names = FALSE)
 }
 
- 
+
 
 startFile <- 1
 SUF = "ZIKA"
@@ -1227,10 +1230,10 @@ if (confirmados == TRUE){
 
 zikv <- fread(file.path(dir, "/2016-2025_ZIKV_CONFIRMADOS_new.tsv"))
 chikv <- fread(file.path(dir, "/2015-2025_CHIKV_CONFIRMADOS_new.tsv"))
-deng_ <- fread(file.path(dir, "/2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv"))
+denv <- fread(file.path(dir, "/2014-2025_DENV_CONFIRMADOS_new.tsv"))
 
 
-arbo <- rbind(deng_, chikv, zikv)
+arbo <- rbind(denv, chikv, zikv)
 
 # "Noti_Date"     "Noti_Week"     "State"         "City"          "New_Cases"
 # "weekStart"     "uf"            "codigo_munic"  "nome_munic"
@@ -1246,7 +1249,7 @@ write.table(arbo_agre, file.path(dir, "/2014-2025_ARBO_CONFIRMADOS_new.tsv"), se
 
 '
 
- 
+' 
 # Cheque se os arquivos .dbc têm tamanho razoável (> 0 bytes)
 file.info(list.files(mypath, pattern = ".dbc", full.names = TRUE))$size
 

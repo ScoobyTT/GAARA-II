@@ -37,7 +37,7 @@ CREATE TABLE fato_casos (
     FOREIGN KEY (id_municipio) REFERENCES dim_geografia(id_municipio)
 );
 
-CREATE INDEX idx_fato_agravo ON fato_casos(agravo);
+CREATE INDEX idx_fato_agravo ON fato_casos(New_Cases, months, abbrev_state, name_state);
 CREATE INDEX idx_fato_tempo ON fato_casos(id_tempo);
 CREATE INDEX idx_fato_municipio ON fato_casos(id_municipio);
 CREATE INDEX idx_fato_composto ON fato_casos(agravo, id_municipio, id_tempo);
@@ -49,7 +49,10 @@ ENGINE = get_engine()
 ######################################################################################
 #leitura de dados brutos
 # Se você não tiver o CSV completo, pode criar a partir dos dados do seu TSV:
+#dados confirmados
 df = pd.read_csv('2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv', sep='\t')
+#dados notificados
+df_noti = pd.read_csv('/2000-2025_DENGUE_CONFIRMADOS_new_ze.tsv', sep='\t')
 # 1. LER O CALENDÁRIO SINAN
 calendario = pd.read_csv('GAARA-II/app/input/sinan_calendario.txt', sep='\t')
 ###########################################################################################
@@ -95,8 +98,8 @@ print(f"Inseridas {len(df)} semanas.")
 
 ######################################################################################
 # 2. CRIAR TABELA TEMPORÁRIA NO BANCO
-aux.to_sql('temp_sinan', ENGINE, if_exists='replace', index=False)
-print(f"Tabela temporária criada com {len(df)} linhas.")
+#aux.to_sql('temp_sinan', ENGINE, if_exists='replace', index=False)
+#print(f"Tabela temporária criada com {len(df)} linhas.")
 
 # 3. AGRUPAR E INSERIR NA FATO_CASOS
 query = """

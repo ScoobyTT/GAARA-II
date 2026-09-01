@@ -1,3 +1,4 @@
+#vou precisar converter todo o download para python
 library(downloader)
 library(RCurl)
 library(data.table)

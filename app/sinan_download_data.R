@@ -1,4 +1,3 @@
-#vou precisar converter todo o download para python
 library(downloader)
 library(RCurl)
 library(data.table)
@@ -215,13 +214,21 @@ meso_regiao <- read_xls(file.path(dir, "regioes_geograficas_composicao_por_munic
 meso_regiao_pop <- left_join(pop2024, meso_regiao, by = c("cod_municipio"="CD_GEOCODI"))
 
 baseFinal <- left_join(newBahia, meso_regiao_pop, by=c("State"="codigo_uf", "City"="cod_munic6"))
+estado <- readRDS(file.path(dir, "estados.rds"))
+
+baseFinal <- baseFinal %>%
+  left_join(
+    estado %>% sf::st_drop_geometry() %>% select(code_state, abbrev_state, name_state, name_region),
+    by = c("State" = "code_state")
+  )
 
 if (confirmados == TRUE){
   write.table(baseFinal, file.path(dir, "/2014-2025_DENGUE_CONFIRMADOS_dash_new.tsv"), sep = "\t", row.names = FALSE)
 }else{
   write.table(baseFinal, file.path(dir, "/2014-2025_DENGUE_NOTIFICADOS_dash_new.tsv"), sep = "\t", row.names = FALSE)
 }
- 
+
+#sla <- fread("/home/pimat-08/GAARA-II/app/input/2025_DENGUE_CONFIRMADOS_dash_new.tsv")
 #############################################################
 #consolidando arquvivo final q eu preciso
 rm(newBahia, baseFinal, meso_regiao, meso_regiao_pop)
@@ -319,8 +326,16 @@ for (file in t){
   gc()  # devolve a RAM pro sistema
 }
 newData <- dplyr::bind_rows(lista_newData)
+newData <- newData %>%
+  mutate(City = as.character(City)) %>%
+  # left_join(pop2024, by = c("City" = "cod_municipio"))
 newData <- left_join(newData, pop2024, by = c("City" = "cod_municipio"))
 
+newData <- baseFinal %>%
+  left_join(
+    estado %>% sf::st_drop_geometry() %>% select(code_state, abbrev_state, name_state, name_region),
+    by = c("State" = "code_state")
+  )
 if (confirmados == TRUE){
   write.table(newData, file.path(dir, "/2000-2025_DENGUE_CONFIRMADOS_new_ze.tsv"), sep = "\t", row.names = FALSE)
 }else{

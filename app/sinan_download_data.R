@@ -326,12 +326,17 @@ for (file in t){
   gc()  # devolve a RAM pro sistema
 }
 newData <- dplyr::bind_rows(lista_newData)
+
 newData <- newData %>%
   mutate(City = as.character(City)) %>%
-  # left_join(pop2024, by = c("City" = "cod_municipio"))
-newData <- left_join(newData, pop2024, by = c("City" = "cod_municipio"))
+  left_join(
+    pop2024 %>% mutate(cod_munic6 = as.character(cod_munic6)),
+    by = c("City" = "cod_munic6")
+  )
+#newData <- left_join(newData, pop2024, by = c("City" = "cod_municipio"))
 
-newData <- baseFinal %>%
+newData <-newData %>%
+  mutate(State = as.numeric(State)) %>%
   left_join(
     estado %>% sf::st_drop_geometry() %>% select(code_state, abbrev_state, name_state, name_region),
     by = c("State" = "code_state")
